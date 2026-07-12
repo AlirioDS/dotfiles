@@ -1,0 +1,15 @@
+# Dotfiles manifest — shared by install.sh (repo -> $HOME) and save.sh ($HOME -> repo).
+# Format:  <repo-relative-path>  <home-relative-path>
+# Lines starting with # and blank lines are ignored.
+shell/zshrc                  .zshrc
+shell/bashrc                 .bashrc
+shell/profile                .profile
+shell/tmux.conf              .tmux.conf
+shell/zsh                    .zsh
+git/gitconfig                .gitconfig
+tools/tool-versions          .tool-versions
+config/gh/config.yml         .config/gh/config.yml
+config/git/ignore            .config/git/ignore
+claude/settings.json         .claude/settings.json
+claude/settings.local.json   .claude/settings.local.json
+claude/statusline.sh         .claude/statusline.sh

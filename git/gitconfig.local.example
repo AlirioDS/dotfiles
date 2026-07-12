@@ -1,0 +1,8 @@
+# Template for machine-local git identity.
+# Copy to ~/.gitconfig.local and fill in your details:
+#     cp git/gitconfig.local.example ~/.gitconfig.local
+# The committed gitconfig pulls this in via [include]. It is git-ignored, so
+# your email never lands in the (public) repo.
+[user]
+	email = you@example.com
+	name = Your Name

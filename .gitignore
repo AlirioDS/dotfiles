@@ -1,0 +1,14 @@
+# Guardrails: never commit credentials or history, even by accident
+hosts.yml
+ngrok.yml
+*.bak
+*.pem
+*.key
+.env*
+!.env.example
+*_history
+*history*
+*.log
+# Machine-local git identity (real name/email) — only the .example is tracked
+.gitconfig.local
+gitconfig.local
