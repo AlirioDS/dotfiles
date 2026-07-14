@@ -137,9 +137,9 @@ export GOPATH="$HOME/go"
 export PATH="$PATH:$GOPATH/bin"
 # === /GO ===
 
-# asdf (Go binary install)
+# asdf (release binary in ~/.asdf/bin; shims for managed tools)
 export ASDF_DATA_DIR="$HOME/.asdf"
-export PATH="$ASDF_DATA_DIR/shims:$PATH"
+export PATH="$ASDF_DATA_DIR/bin:$ASDF_DATA_DIR/shims:$PATH"
 export PATH="$PATH:${GOBIN:-$(go env GOPATH 2>/dev/null)/bin}"
 
 # --- Auto-start tmux: nueva sesión numérica por pestaña (sin awk) ---
