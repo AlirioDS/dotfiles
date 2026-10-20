@@ -1,0 +1,20 @@
+onboarding = false
+
+[ui.toast]
+delivery = "herdr"
+
+[ui]
+status_indicators = "symbols"
+mouse_capture = true
+copy_on_select = true
+mouse_scroll_lines = 3
+prompt_new_tab_name = false
+
+[keys]
+prefix = "ctrl+a"
+focus_pane_left = ["prefix+h", "prefix+left"]
+focus_pane_down = ["prefix+j", "prefix+down"]
+focus_pane_up = ["prefix+k", "prefix+up"]
+focus_pane_right = ["prefix+l", "prefix+right"]
+split_vertical = ["prefix+v", "prefix+percent"]
+split_horizontal = ["prefix+minus", "prefix+double_quote"]

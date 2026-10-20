@@ -66,6 +66,11 @@ safe.
   but SSH remotes (`git@github.com:…`) and the `ssh-add` line in `.zshrc` need it.
 - **Auth/credentials** — `gh auth login`, plus `~/.aws`, `~/.docker`, etc. as
   needed. None of these live in the repo.
+- **Herdr agent integrations** — `herdr integration install claude` and
+  `herdr integration install codex`. They write the hook scripts and register
+  them; the tracked `claude/settings.json` does not carry the Herdr hook, so
+  run them again after every `install.sh` and confirm with
+  `herdr integration status`.
 
 ### Docker vs. host installs
 
@@ -91,7 +96,7 @@ bump they'll look "missing" until you reinstall them under the new version.
 | `shell/` | `zshrc`, `bashrc`, `profile`, `tmux.conf`, `zsh/` (completions) | `~/.zshrc`, `~/.bashrc`, `~/.profile`, `~/.tmux.conf`, `~/.zsh` |
 | `git/` | `gitconfig` | `~/.gitconfig` |
 | `tools/` | `tool-versions` (asdf version pins) | `~/.tool-versions` |
-| `config/` | selected `~/.config`: `gh/config.yml`, `git/ignore` | `~/.config/gh/config.yml`, `~/.config/git/ignore` |
+| `config/` | selected `~/.config`: `gh/config.yml`, `git/ignore`, `herdr/config.toml` | `~/.config/gh/config.yml`, `~/.config/git/ignore`, `~/.config/herdr/config.toml` |
 | `claude/` | Claude Code `settings.json`, `settings.local.json`, `statusline.sh` | `~/.claude/…` |
 
 The mapping above is driven by [`manifest.txt`](manifest.txt) — a plain
