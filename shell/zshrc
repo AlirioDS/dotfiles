@@ -80,17 +80,16 @@ plugins=(
   command-not-found colored-man-pages history-substring-search z
   web-search
   zsh-completions
-  fzf-tab
-  zsh-autosuggestions
-  zsh-syntax-highlighting
 )
 
 # Load fzf-tab only if `fzf` is installed; otherwise keep normal Tab completion.
+# fzf-tab must be loaded before zsh-autosuggestions and zsh-syntax-highlighting.
 if command -v fzf >/dev/null 2>&1; then
-  plugins+=("fzf-tab")
+  plugins+=(fzf-tab)
 else
   bindkey '^I' expand-or-complete
 fi
+plugins+=(zsh-autosuggestions zsh-syntax-highlighting)
 
 # Put your custom completions directory in fpath **before** OMZ initializes compinit.
 fpath=(~/.zsh/completions $fpath)

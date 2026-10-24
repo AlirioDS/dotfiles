@@ -103,7 +103,11 @@ plain_bar() {
 }
 
 # ─── Usage tracking via ccusage daily (cached, background refresh) ───
-USAGE_CACHE="/tmp/claude-statusline-usage-${USER}.json"
+# Pinned: an unpinned `npx -y ccusage` would download and run whatever is latest on every refresh.
+CCUSAGE_VERSION=20.0.43
+# Per-user private directory (XDG_RUNTIME_DIR is 0700) instead of a predictable shared /tmp path.
+USAGE_DIR="${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}"
+USAGE_CACHE="${USAGE_DIR%/}/claude-statusline-usage-${USER}.json"
 USAGE_TTL=30  # seconds
 TODAY=$(date +%Y%m%d)
 
@@ -113,10 +117,12 @@ if [ -f "$USAGE_CACHE" ]; then
   cache_age=$(( $(date +%s) - cache_mtime ))
 fi
 
-# Refresh in background if missing or stale (don't block status line)
+# Refresh in background if missing or stale (don't block status line).
+# flock -n: several agents rendering status lines at once share one refresh instead of racing.
 if [ "$cache_age" -gt "$USAGE_TTL" ]; then
-  ( npx -y ccusage daily --json --since "$TODAY" >"${USAGE_CACHE}.tmp" 2>/dev/null \
-    && mv "${USAGE_CACHE}.tmp" "$USAGE_CACHE" ) >/dev/null 2>&1 </dev/null &
+  ( flock -n 9 || exit 0
+    npx -y "ccusage@${CCUSAGE_VERSION}" daily --json --since "$TODAY" >"${USAGE_CACHE}.tmp" 2>/dev/null \
+    && mv "${USAGE_CACHE}.tmp" "$USAGE_CACHE" ) 9>"${USAGE_CACHE}.lock" >/dev/null 2>&1 </dev/null &
   disown 2>/dev/null
 fi
 
