@@ -29,3 +29,5 @@ session-snapshots/
 __pycache__/
 # Audit reports stay local: they quote secret patterns and internal hook details
 tools/herdr-tmux-audit/codex-audit-*.md
+# Written per machine by `herdr integration install claude`; save.sh also strips its settings entry
+claude/hooks/herdr-agent-state.sh

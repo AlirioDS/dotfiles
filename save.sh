@@ -22,6 +22,33 @@ while read -r src dst _rest; do
   echo "saved  ~/$dst -> $src"
 done < "$DOTFILES/manifest.txt"
 
+# Herdr registers its Claude hook with a machine-specific absolute path, and
+# `herdr integration install claude` re-adds it on every machine (it does not
+# recognise a rewritten entry), so keep that one entry out of the shared
+# settings. Your own hooks stay.
+if command -v python3 >/dev/null 2>&1; then
+  python3 - "$DOTFILES/claude/settings.json" <<'PY'
+import json, sys
+path = sys.argv[1]
+d = json.load(open(path))
+changed = False
+for groups in (d.get("hooks") or {}).values():
+    for g in groups:
+        kept = [h for h in g.get("hooks", []) if "herdr-agent-state" not in h.get("command", "")]
+        if len(kept) != len(g.get("hooks", [])):
+            g["hooks"] = kept
+            changed = True
+    groups[:] = [g for g in groups if g.get("hooks")]
+if changed:
+    with open(path, "w") as f:
+        json.dump(d, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    print("strip  Herdr hook entry from claude/settings.json (herdr integration install re-adds it per machine)")
+PY
+else
+  echo "note: python3 not found; claude/settings.json keeps the machine-specific Herdr hook entry"
+fi
+
 echo
 echo "Review, then commit:"
 echo "  git -C \"$DOTFILES\" status && git -C \"$DOTFILES\" diff"

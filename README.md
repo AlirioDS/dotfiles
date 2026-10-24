@@ -80,9 +80,10 @@ Open a new shell (or `exec zsh`) for `.zshrc`.
 - **Herdr agent integrations** — `bootstrap.sh` runs them, but after a bare
   `install.sh` run `herdr integration install claude` and
   `herdr integration install codex` yourself. They write the hook scripts and
-  register them; the tracked `claude/settings.json` does not carry the Herdr
-  hook, so `install.sh` removes it every time. Confirm with
-  `herdr integration status`.
+  register them with a machine-specific absolute path, which is why `save.sh`
+  strips the Herdr entry from `claude/settings.json` and `claude/hooks/` does
+  not track `herdr-agent-state.sh`: `install.sh` restores your own hooks, the
+  integration re-adds Herdr's. Confirm with `herdr integration status`.
 
 ### Docker vs. host installs
 
@@ -110,7 +111,7 @@ bump they'll look "missing" until you reinstall them under the new version.
 | `git/` | `gitconfig` | `~/.gitconfig` |
 | `tools/` | `tool-versions` (asdf version pins) | `~/.tool-versions` |
 | `config/` | selected `~/.config`: `gh/config.yml`, `git/ignore`, `herdr/config.toml` | `~/.config/gh/config.yml`, `~/.config/git/ignore`, `~/.config/herdr/config.toml` |
-| `claude/` | Claude Code `settings.json`, `settings.local.json`, `statusline.sh` | `~/.claude/…` |
+| `claude/` | Claude Code `settings.json`, `settings.local.json`, `statusline.sh`, `hooks/` (journal, prototype-gate, merge-push-deny) | `~/.claude/…` |
 | `docs/` | `herdr-tmux-config.md` — how tmux (Ctrl+b) and Herdr (Ctrl+a) are combined, and how to reproduce it on a server | `~/herdr-tmux-config.md` |
 | `tools/herdr-tmux-audit/` | isolated test suite for that setup (`python3 ~/herdr-tmux-audit/run_checks.py`) | `~/herdr-tmux-audit/` |
 
