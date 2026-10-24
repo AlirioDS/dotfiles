@@ -33,8 +33,9 @@ with a message instead of doing anything half-broken. It is idempotent — it
 detects what's already installed and skips it. It installs base packages (git,
 zsh, curl, tmux, fzf, build-essential), **gh**, **Go**, **Docker**, **oh-my-zsh**,
 **asdf** (+ `nodejs` & `lazygit` from [`tools/tool-versions`](tools/tool-versions)),
-**lazydocker**, and **Claude Code**; sets zsh as your login shell; and finally
-runs `install.sh` to copy config into `$HOME`.
+**lazydocker**, **Claude Code**, **Codex**, and **Herdr** (plus its Claude/Codex
+integrations); sets zsh as your login shell; and runs `install.sh` to copy
+config into `$HOME`.
 
 Two steps may need follow-up: `chsh` can prompt for your password, and Docker on
 WSL2 usually needs `sudo service docker start` (or Docker Desktop's WSL
@@ -52,6 +53,16 @@ into `$HOME`, backing up anything it would overwrite into
 `~/dotfiles-backup-<timestamp>/`, and clones the oh-my-zsh plugins. Re-running is
 safe.
 
+Copying a file does not reload the program that already read it. If tmux or
+Herdr are running on that machine, apply the restored config with:
+
+```bash
+tmux source-file ~/.tmux.conf   # tmux keeps its session; only bindings/options change
+herdr server reload-config      # applies ~/.config/herdr/config.toml to the running server
+```
+
+Open a new shell (or `exec zsh`) for `.zshrc`.
+
 ### Not automated (do these by hand)
 
 `bootstrap.sh` can't restore secrets or personal state — after it runs:
@@ -66,16 +77,18 @@ safe.
   but SSH remotes (`git@github.com:…`) and the `ssh-add` line in `.zshrc` need it.
 - **Auth/credentials** — `gh auth login`, plus `~/.aws`, `~/.docker`, etc. as
   needed. None of these live in the repo.
-- **Herdr agent integrations** — `herdr integration install claude` and
-  `herdr integration install codex`. They write the hook scripts and register
-  them; the tracked `claude/settings.json` does not carry the Herdr hook, so
-  run them again after every `install.sh` and confirm with
+- **Herdr agent integrations** — `bootstrap.sh` runs them, but after a bare
+  `install.sh` run `herdr integration install claude` and
+  `herdr integration install codex` yourself. They write the hook scripts and
+  register them; the tracked `claude/settings.json` does not carry the Herdr
+  hook, so `install.sh` removes it every time. Confirm with
   `herdr integration status`.
 
 ### Docker vs. host installs
 
-Only two tools are asdf-managed on the host — **nodejs** (kept at the latest
-release; it's the runtime **Claude Code** itself needs) and **lazygit**.
+Only two tools are asdf-managed on the host — **nodejs** (pinned in
+`tools/tool-versions`; it's the runtime **Claude Code** and **Codex** need) and
+**lazygit**.
 Everything else is installed another way:
 
 - **ruby**, **redis** — run from Docker images; no host install needed.
@@ -98,6 +111,8 @@ bump they'll look "missing" until you reinstall them under the new version.
 | `tools/` | `tool-versions` (asdf version pins) | `~/.tool-versions` |
 | `config/` | selected `~/.config`: `gh/config.yml`, `git/ignore`, `herdr/config.toml` | `~/.config/gh/config.yml`, `~/.config/git/ignore`, `~/.config/herdr/config.toml` |
 | `claude/` | Claude Code `settings.json`, `settings.local.json`, `statusline.sh` | `~/.claude/…` |
+| `docs/` | `herdr-tmux-config.md` — how tmux (Ctrl+b) and Herdr (Ctrl+a) are combined, and how to reproduce it on a server | `~/herdr-tmux-config.md` |
+| `tools/herdr-tmux-audit/` | isolated test suite for that setup (`python3 ~/herdr-tmux-audit/run_checks.py`) | `~/herdr-tmux-audit/` |
 
 The mapping above is driven by [`manifest.txt`](manifest.txt) — a plain
 `repo-path  home-path` list that both `install.sh` and `save.sh` read. To track a
@@ -117,21 +132,24 @@ machine-local state are deliberately excluded and never committed:
 [`.gitignore`](.gitignore) guards against adding any of these by accident, but a
 `.gitignore` is a safety net, not a guarantee.
 
-**The rule: run the secret scan before every push.**
+**The rule: run the secret scan before every commit and push.**
 
 ```bash
-git ls-files -z -- ':!:README.md' | xargs -0 grep -lriE \
-  'ghp_|gho_|xox[bp]-|AKIA[0-9A-Z]{16}|-----BEGIN.*PRIVATE KEY|authtoken' -- \
-  || echo "SCAN CLEAN"
+git grep -lIiE --untracked \
+  'ghp_|gho_|github_pat_|xox[bp]-|AKIA[0-9A-Z]{16}|sk-ant-|sk-proj-|AIza[0-9A-Za-z_-]{35}|-----BEGIN.*PRIVATE KEY|authtoken' \
+  -- . ':!README.md'
+case $? in 1) echo "SCAN CLEAN" ;; 0) echo "SECRETS FOUND in the files above" ;; *) echo "SCAN ERROR" ;; esac
 ```
 
-Expected output: `SCAN CLEAN` (it lists any offending file, or prints
-`SCAN CLEAN` when there are none). `README.md` is excluded from the scan on
-purpose: this file *documents* the patterns, so it always matches on its own
+Expected output: `SCAN CLEAN`. It scans tracked **and untracked** files (so new
+files are checked before `git add`), and it distinguishes "no match" from a
+scanner error instead of printing `SCAN CLEAN` for both. `README.md` is excluded
+on purpose: this file *documents* the patterns, so it always matches on its own
 definitions — a false positive, not a leak. Every actual config file (`shell/`,
-`git/`, `config/`, `claude/`, `tools/`) is still scanned. If
-[gitleaks](https://github.com/gitleaks/gitleaks)
-is installed, additionally run `gitleaks detect -s . --no-git`.
+`git/`, `config/`, `claude/`, `tools/`, `docs/`) is still scanned. If
+[gitleaks](https://github.com/gitleaks/gitleaks) is installed, additionally run
+`gitleaks dir .` (working tree) and `gitleaks git .` (history). Note that the
+commit history already carries the author e-mail; the scan cannot remove that.
 
 ## Environment files (`.env`)
 

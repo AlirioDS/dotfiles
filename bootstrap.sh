@@ -8,7 +8,8 @@
 #
 # Targets Ubuntu/Debian (apt). Installs: base packages, gh, Go, Docker,
 # oh-my-zsh, asdf (+ nodejs/lazygit from tool-versions), lazydocker,
-# Claude Code, and sets zsh as the login shell.
+# Claude Code, Codex, Herdr (+ its Claude/Codex integrations), and sets zsh
+# as the login shell.
 set -uo pipefail
 
 DOTFILES="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -38,7 +39,9 @@ ARCH="$(dpkg --print-architecture)"
 
 ### 1. Base packages ---------------------------------------------------------
 hr "Base packages (apt)"
-BASE=(git zsh curl tmux fzf build-essential ca-certificates gnupg)
+# python3: Herdr's Claude/Codex hook scripts exit silently without it.
+# ncurses-term: terminfo for tmux-256color (default-terminal in tmux.conf).
+BASE=(git zsh curl tmux fzf build-essential ca-certificates gnupg python3 ncurses-term)
 missing=()
 for p in "${BASE[@]}"; do dpkg -s "$p" >/dev/null 2>&1 || missing+=("$p"); done
 if [ "${#missing[@]}" -eq 0 ]; then
@@ -177,6 +180,46 @@ else
   todo "npm not available yet — install node (step 8) first, then: npm i -g @anthropic-ai/claude-code"
 fi
 
+### 10b. Codex CLI ------------------------------------------------------------
+hr "Codex CLI"
+if have codex; then
+  ok "codex present ($(codex --version 2>/dev/null | head -1))"
+elif have npm; then
+  todo "npm install -g @openai/codex"
+  run bash -c 'npm install -g @openai/codex && asdf reshim nodejs 2>/dev/null || true'
+else
+  todo "npm not available yet — install node (step 8) first, then: npm i -g @openai/codex"
+fi
+
+### 10c. Herdr + agent integrations ------------------------------------------
+# Herdr organizes terminals/agents inside tmux; its config.toml was restored by
+# install.sh (step 7). The integrations write the hook files that let Herdr
+# detect Claude Code and Codex; they are NOT part of the tracked claude/ files,
+# so they must be (re)installed on every machine.
+# The installer fetches the latest release (this setup was verified with 0.9.5);
+# to pin a version, download that release's binary from GitHub instead.
+hr "Herdr (+ Claude/Codex integrations)"
+if have herdr; then
+  ok "herdr present ($(herdr --version 2>/dev/null | head -1))"
+else
+  todo "install herdr (herdr.dev/install.sh -> ~/.local/bin)"
+  sh_c 'curl -fsSL https://herdr.dev/install.sh | sh'
+fi
+if have herdr || [ "$DRY_RUN" = 1 ]; then
+  for agent in claude codex; do
+    if have "$agent"; then
+      todo "herdr integration install $agent"
+      run herdr integration install "$agent"
+    else
+      todo "herdr integration install $agent (skipped: $agent not installed yet)"
+    fi
+  done
+  if [ "$DRY_RUN" = 0 ] && herdr status server 2>/dev/null | grep -q 'status: running'; then
+    todo "herdr server reload-config (a Herdr server is already running)"
+    run herdr server reload-config >/dev/null
+  fi
+fi
+
 ### 11. Login shell ----------------------------------------------------------
 hr "Login shell"
 ZSH_BIN="$(command -v zsh || true)"
@@ -191,7 +234,7 @@ fi
 
 ### Summary ------------------------------------------------------------------
 hr "Summary"
-for t in git zsh gh go docker asdf node lazygit lazydocker claude; do
+for t in git zsh gh go docker asdf node lazygit lazydocker claude codex herdr; do
   if have "$t"; then ok "$t"; else todo "$t (not detected)"; fi
 done
 echo

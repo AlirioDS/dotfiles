@@ -14,3 +14,5 @@ config/herdr/config.toml     .config/herdr/config.toml
 claude/settings.json         .claude/settings.json
 claude/settings.local.json   .claude/settings.local.json
 claude/statusline.sh         .claude/statusline.sh
+docs/herdr-tmux-config.md    herdr-tmux-config.md
+tools/herdr-tmux-audit       herdr-tmux-audit

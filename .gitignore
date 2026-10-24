@@ -12,3 +12,20 @@ ngrok.yml
 # Machine-local git identity (real name/email) — only the .example is tracked
 .gitconfig.local
 gitconfig.local
+# Credential stores and keys that must never be copied in, whatever the path
+.ssh/
+id_*
+*.ppk
+.aws/
+.docker/
+.claude.json
+auth.json
+# Herdr runtime state: only config.toml is tracked
+config/herdr/*
+!config/herdr/config.toml
+*.sock
+session.json
+session-snapshots/
+__pycache__/
+# Audit reports stay local: they quote secret patterns and internal hook details
+tools/herdr-tmux-audit/codex-audit-*.md
