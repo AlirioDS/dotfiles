@@ -206,6 +206,9 @@ else
   sh_c 'curl -fsSL https://herdr.dev/install.sh | sh'
 fi
 if have herdr || [ "$DRY_RUN" = 1 ]; then
+  # The integrations write into the agents' config dirs, which the agents only create on
+  # their first run; on a fresh machine create them now so the install does not fail.
+  run mkdir -p "$HOME/.claude" "$HOME/.codex"
   for agent in claude codex; do
     if have "$agent"; then
       todo "herdr integration install $agent"

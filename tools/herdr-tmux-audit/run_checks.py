@@ -60,6 +60,17 @@ def layout(tab):
     return s['focused_pane_id'], {p['pane_id']: p['rect'] for p in lay['panes']}
 
 
+def ensure_scrollback():
+    """Make sure the focused pane holds the SCROLL_001..300 lines (checks 04-07 rely on them, and
+    --only may skip the check that produced them)."""
+    p = A.snap()['focused_pane_id']
+    if A.pane(p)['scroll']['max_offset_from_bottom'] < 200 or not A.find_on_terminal('SCROLL_300'):
+        A.typ("clear; seq -f 'SCROLL_%03g' 1 300")
+        A.wait_for(lambda: A.pane(p)['scroll']['max_offset_from_bottom'] > 200, 'scrollback')
+        time.sleep(0.5)
+    return p
+
+
 def visible_range():
     toks = [int(t) for l in A.outer_pane_screen() for t in re.findall(r'SCROLL_(\d{3})', l)]
     return min(toks), max(toks)
@@ -167,11 +178,8 @@ def c03b():
 
 @check('04 wheel over Herdr: exactly mouse_scroll_lines rows/notch, outer tmux never enters copy mode')
 def c04():
-    p = A.snap()['focused_pane_id']
+    p = ensure_scrollback()
     n = scroll_lines()
-    A.typ("clear; seq -f 'SCROLL_%03g' 1 300")
-    A.wait_for(lambda: A.pane(p)['scroll']['max_offset_from_bottom'] > 200, 'scrollback')
-    time.sleep(0.5)
     r0 = visible_range()
     A.wheel('up', 5, 80, 20)
     off, mode, r1 = A.pane(p)['scroll']['offset_from_bottom'], A.outer('#{pane_in_mode}'), visible_range()
@@ -204,20 +212,22 @@ def c05():
 
 @check('06 mouse drag copy: decoded OSC 52 at the terminal equals the selected text')
 def c06():
+    ensure_scrollback()
     token = 'SCROLL_297'
     x, y = A.wait_for(lambda: A.find_on_terminal(token), 'token on screen')
     off = len(A.raw())
     A.drag(x, y, x + len(token) - 1, y)
     time.sleep(0.8)
     osc, buf, term = A.osc52_since(off), A.ta('show-buffer', check=False).stdout, A.th('show-buffer', check=False).stdout
-    expect(osc == [('c', token)] and buf == token and term == token, (osc, buf, term))
+    # tmux 3.4 emits "52;c;<b64>", tmux 3.3 emits "52;;<b64>": only the decoded payload is asserted
+    expect([t for _, t in osc] == [token] and buf == token and term == token, (osc, buf, term))
     expect(A.outer('#{pane_in_mode}') == '0', 'outer tmux entered copy mode')
     return f'OSC 52 at terminal={osc}; tmux buffer={buf!r}; terminal-side decode={term!r}'
 
 
 @check('07 keyboard copy mode: Ctrl+a [ , ?search, v e y -> decoded OSC 52')
 def c07():
-    p = A.snap()['focused_pane_id']
+    p = ensure_scrollback()
     token = 'SCROLL_123'
     A.keys('C-a', '[', pause=0.8)
     status = A.outer_pane_screen()[-2]
@@ -231,7 +241,7 @@ def c07():
     A.keys('y', pause=1.0)
     osc = A.osc52_since(off)
     after = A.pane(p)['scroll']['offset_from_bottom']
-    expect(scrolled > 0 and osc == [('c', token)] and after == 0, (scrolled, osc, after))
+    expect(scrolled > 0 and [t for _, t in osc] == [token] and after == 0, (scrolled, osc, after))
     return f'COPY legend shown; search scrolled to offset {scrolled}; OSC 52={osc}; y exited to offset {after}'
 
 
@@ -241,7 +251,7 @@ def c08():
     off = len(A.raw())
     A.typ("""printf '\\033]52;c;%s\\007' "$(printf APPCOPY_OK | base64)"; echo SENT""", pause=1.5)
     osc, buf = A.osc52_since(off), A.ta('show-buffer', check=False).stdout
-    expect(osc == [('c', 'APPCOPY_OK')] and buf == 'APPCOPY_OK', (osc, buf))
+    expect([t for _, t in osc] == ['APPCOPY_OK'] and buf == 'APPCOPY_OK', (osc, buf))
     return f'OSC 52 at terminal={osc}; tmux buffer={buf!r}'
 
 
