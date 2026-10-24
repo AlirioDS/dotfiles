@@ -1,11 +1,27 @@
 #!/usr/bin/env bash
 # PreToolUse(Edit|Write|MultiEdit): block edits to visual files until the branch journal registers a prototype.
-# Fail-OPEN on missing journal / kill-switch. Pure bash (no jq). ALWAYS exits 0.
+# Fail-OPEN on missing journal / kill-switch / other repositories. No jq: python3 decodes the hook JSON
+# (sed fallback when python3 is missing). ALWAYS exits 0.
 set +e
 [ "${ALTAIRUM_PROTOTYPE_GATE:-on}" = "off" ] && exit 0
 
-input="$(cat | tr '\n' ' ')"
-file="$(printf '%s' "$input" | sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
+# Altairum guard, same as journal-scaffold.sh: another repository on a branch with the same
+# name must not inherit this gate through the shared journal directory.
+case "$(git remote get-url origin 2>/dev/null)" in
+  *AlirioDS/altairum|*AlirioDS/altairum.git) ;; *) exit 0 ;;
+esac
+
+input="$(cat)"
+if command -v python3 >/dev/null 2>&1; then
+  file="$(printf '%s' "$input" | python3 -c '
+import json, sys
+try:
+    print(json.load(sys.stdin).get("tool_input", {}).get("file_path", ""))
+except Exception:
+    pass')"
+else
+  file="$(printf '%s' "$input" | tr '\n' ' ' | sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)"
+fi
 [ -z "$file" ] && exit 0
 
 case "$file" in

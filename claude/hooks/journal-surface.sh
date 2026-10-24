@@ -18,8 +18,10 @@ case "$branch" in
   ""|HEAD|development|main) exit 0 ;;
 esac
 
-# 3. Locate journal (slug: '/' -> '-')
-journal="$JOURNAL_DIR/${branch//\//-}.md"
+# 3. Locate journal (same slug rule as journal-scaffold.sh and prototype-gate.sh:
+#    '/' -> '-', then every other character outside [a-zA-Z0-9._-] -> '-')
+slug="$(printf '%s' "$branch" | sed 's#/#-#g; s#[^a-zA-Z0-9._-]#-#g')"
+journal="$JOURNAL_DIR/${slug}.md"
 [ -f "$journal" ] || exit 0
 
 # 4. Read ONLY the YAML header (between the first two '---' lines)
