@@ -234,7 +234,7 @@ fi
 
 ### Summary ------------------------------------------------------------------
 hr "Summary"
-for t in git zsh gh go docker asdf node lazygit lazydocker claude codex herdr; do
+for t in git zsh tmux python3 gh go docker asdf node lazygit lazydocker claude codex herdr; do
   if have "$t"; then ok "$t"; else todo "$t (not detected)"; fi
 done
 echo

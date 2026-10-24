@@ -555,28 +555,39 @@ def main():
                     A.herdr('server', 'reload-config', check=False)
                     RESULTS[-1]['config_restored_after_check'] = True
     finally:
-        config_identical = A.sha(A.HCONF) == A.sha(A.REAL_HCONF) if A.HCONF.exists() else None
-        for log in (A.X / 'herdr').glob('*.log'):
-            shutil.copy(log, A.OUT / log.name)
-        killed = A.teardown()
+        config_identical, artifacts_error = None, None
+        try:
+            config_identical = A.sha(A.HCONF) == A.sha(A.REAL_HCONF) if A.HCONF.exists() else None
+            for log in (A.X / 'herdr').glob('*.log'):
+                shutil.copy(log, A.OUT / log.name)
+        except Exception as e:  # bookkeeping must never skip the teardown below
+            artifacts_error = f'{type(e).__name__}: {e}'
+        finally:
+            killed = A.teardown()
         after = A.live_fp()
         (A.OUT / 'live-after.json').write_text(json.dumps(after, indent=1))
         hist1 = history_marks()
-        new_live = sorted(set(after['tmux_panes']) - set(before['tmux_panes']))
+
+        def unchanged(key):          # None on either side = the live query failed: say so, do not claim preservation
+            return 'unverifiable' if before[key] is None or after[key] is None else before[key] == after[key]
+
+        tp_known = before['tmux_panes'] is not None and after['tmux_panes'] is not None
         cleanup = {
             'isolated_config_identical_to_active_at_end': config_identical,
+            'artifacts_error': artifacts_error,
             'marked_processes_after_teardown': A.marked_pids(),
             'marked_processes_killed_by_teardown': killed,
-            'live_herdr_panes_unchanged': before['herdr_panes'] == after['herdr_panes'],
-            'live_tmux_clients_unchanged': before['tmux_clients'] == after['tmux_clients'],
-            'live_tmux_panes_all_still_present': set(before['tmux_panes']) <= set(after['tmux_panes']),
-            'live_tmux_panes_created_by_others_during_run': new_live,
+            'live_herdr_panes_unchanged': unchanged('herdr_panes'),
+            'live_tmux_clients_unchanged': unchanged('tmux_clients'),
+            'live_tmux_panes_all_still_present': set(before['tmux_panes']) <= set(after['tmux_panes']) if tp_known else 'unverifiable',
+            'live_tmux_panes_created_by_others_during_run': sorted(set(after['tmux_panes']) - set(before['tmux_panes'])) if tp_known else 'unverifiable',
             'real_zsh_history_marker_counts_unchanged': hist0 == hist1,
         }
-        cleanup_ok = (config_identical is True and not cleanup['marked_processes_after_teardown']
-                      and all(cleanup[k] for k in ('live_herdr_panes_unchanged', 'live_tmux_clients_unchanged',
-                                                   'live_tmux_panes_all_still_present',
-                                                   'real_zsh_history_marker_counts_unchanged')))
+        verdicts = [cleanup[k] for k in ('live_herdr_panes_unchanged', 'live_tmux_clients_unchanged',
+                                         'live_tmux_panes_all_still_present', 'real_zsh_history_marker_counts_unchanged')]
+        cleanup_ok = (config_identical is True and artifacts_error is None
+                      and not cleanup['marked_processes_after_teardown'] and False not in verdicts)
+        cleanup['unverifiable'] = [k for k, v in cleanup.items() if v == 'unverifiable']
         counts = {s: sum(r['status'] == s for r in RESULTS) for s in ('pass', 'fail', 'skip')}
         summary = {'passed': counts['pass'], 'failed': counts['fail'], 'skipped': counts['skip'],
                    'cleanup_ok': cleanup_ok, 'checks': RESULTS, 'cleanup': cleanup}

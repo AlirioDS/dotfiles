@@ -94,8 +94,13 @@ plugins+=(zsh-autosuggestions zsh-syntax-highlighting)
 # Put your custom completions directory in fpath **before** OMZ initializes compinit.
 fpath=(~/.zsh/completions $fpath)
 
-# Load Oh My Zsh (this also runs compinit for you)
-source $ZSH/oh-my-zsh.sh
+# Load Oh My Zsh (this also runs compinit for you). Guarded so a config-only restore
+# (install.sh without bootstrap.sh) does not print an error on every new shell.
+if [ -f "$ZSH/oh-my-zsh.sh" ]; then
+  source "$ZSH/oh-my-zsh.sh"
+else
+  echo "oh-my-zsh not installed (~/.oh-my-zsh); run ~/dotfiles/bootstrap.sh to install it" >&2
+fi
 
 # User configuration
 
@@ -141,24 +146,26 @@ export ASDF_DATA_DIR="$HOME/.asdf"
 export PATH="$ASDF_DATA_DIR/bin:$ASDF_DATA_DIR/shims:$PATH"
 export PATH="$PATH:${GOBIN:-$(go env GOPATH 2>/dev/null)/bin}"
 
-# --- Auto-start tmux: nueva sesión numérica por pestaña (sin awk) ---
-if [[ $- == *i* ]] && [[ -t 1 ]] && [[ -z "$TMUX" ]] && [[ -z "$NO_TMUX" ]] && [[ "${HERDR_ENV:-}" != 1 ]] && command -v tmux >/dev/null 2>&1; then
-  # Lista de sesiones numéricas existentes (puede estar vacía)
+# --- Auto-start tmux: one numbered session per terminal tab (no awk) ---
+if [[ $- == *i* ]] && [[ -t 0 && -t 1 ]] && [[ -z "$TMUX" ]] && [[ -z "$NO_TMUX" ]] && [[ "${HERDR_ENV:-}" != 1 ]] && command -v tmux >/dev/null 2>&1; then
+  # Existing numeric session names (may be empty)
   sessions="$(tmux ls -F '#{session_name}' 2>/dev/null | grep -E '^[0-9]+$' | sort -n || true)"
 
   i=0
-  # Busca el menor número libre
+  # Find the lowest free number
   while echo "$sessions" | grep -qx "$i"; do
     i=$((i+1))
   done
 
-  # Crea y entra en esa sesión (sin -d y sin detach de otras).
-  # Si otro shell tomó el mismo número a la vez ("duplicate session"), prueba el siguiente;
-  # cualquier otro fallo de tmux se muestra y termina el bucle.
-  until tmux new -s "$i"; do
+  # Create the session detached first: a failure here that leaves the session existing can only be
+  # "duplicate session" (another shell took the same number at the same moment), so try the next one.
+  # Any other tmux error is shown and ends the loop.
+  until tmux new -d -s "$i"; do
     tmux has-session -t "=$i" 2>/dev/null || break
     i=$((i+1))
   done
+  # Attach once; whatever happens to this client later never re-enters the loop.
+  tmux attach -t "=$i"
 fi
 # --- /Auto-start tmux ---
 

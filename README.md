@@ -63,6 +63,11 @@ herdr server reload-config      # applies ~/.config/herdr/config.toml to the run
 
 Open a new shell (or `exec zsh`) for `.zshrc`.
 
+`install.sh` and `save.sh` use the default locations under `$HOME`. If a machine
+sets `HERDR_CONFIG_PATH` or `XDG_CONFIG_HOME`, Herdr reads its config from there,
+not from the restored `~/.config/herdr/config.toml`; adjust the manifest path on
+that machine.
+
 ### Not automated (do these by hand)
 
 `bootstrap.sh` can't restore secrets or personal state — after it runs:
@@ -77,6 +82,12 @@ Open a new shell (or `exec zsh`) for `.zshrc`.
   but SSH remotes (`git@github.com:…`) and the `ssh-add` line in `.zshrc` need it.
 - **Auth/credentials** — `gh auth login`, plus `~/.aws`, `~/.docker`, etc. as
   needed. None of these live in the repo.
+- **Agent logins and Claude plugins** — `claude` and `codex` prompt for login on
+  first run (`codex login`). The plugins named in `claude/settings.json`
+  (`enabledPlugins`) only load once their marketplaces exist on the machine:
+  `claude plugin marketplace add anthropics/claude-plugins-official` and
+  `claude plugin marketplace add obra/superpowers-marketplace`, then
+  `claude plugin install <name>@<marketplace>` for each one.
 - **Herdr agent integrations** — `bootstrap.sh` runs them, but after a bare
   `install.sh` run `herdr integration install claude` and
   `herdr integration install codex` yourself. They write the hook scripts and
@@ -139,12 +150,13 @@ machine-local state are deliberately excluded and never committed:
 git grep -lIiE --untracked \
   'ghp_|gho_|github_pat_|xox[bp]-|AKIA[0-9A-Z]{16}|sk-ant-|sk-proj-|AIza[0-9A-Za-z_-]{35}|-----BEGIN.*PRIVATE KEY|authtoken' \
   -- . ':!README.md'
-case $? in 1) echo "SCAN CLEAN" ;; 0) echo "SECRETS FOUND in the files above" ;; *) echo "SCAN ERROR" ;; esac
+case $? in 1) echo "SCAN CLEAN" ;; 0) echo "SECRETS FOUND in the files above"; false ;; *) echo "SCAN ERROR"; false ;; esac
 ```
 
-Expected output: `SCAN CLEAN`. It scans tracked **and untracked** files (so new
-files are checked before `git add`), and it distinguishes "no match" from a
-scanner error instead of printing `SCAN CLEAN` for both. `README.md` is excluded
+Expected output: `SCAN CLEAN` (and `$?` is 0 only then, so it can gate a
+`&& git commit`). It scans tracked **and untracked** files (so new files are
+checked before `git add`), and it distinguishes "no match" from a scanner error
+instead of printing `SCAN CLEAN` for both. `README.md` is excluded
 on purpose: this file *documents* the patterns, so it always matches on its own
 definitions — a false positive, not a leak. Every actual config file (`shell/`,
 `git/`, `config/`, `claude/`, `tools/`, `docs/`) is still scanned. If

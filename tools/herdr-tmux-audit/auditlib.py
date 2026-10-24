@@ -250,20 +250,29 @@ def pane_text(pane_id, lines=60):
 
 # ---------------------------------------------------------------- live fingerprint (read-only)
 def live_fp():
+    """Fingerprint of the LIVE servers, read-only. A list is an observation ([] = server confirmed
+    absent); None means the query itself failed (permissions, connection) and is unverifiable."""
     real = dict(os.environ)
     real.pop('TMUX_TMPDIR', None)
-    tm = subprocess.run(['tmux', 'list-panes', '-a', '-F', '#{session_name}:#{window_index}.#{pane_index} #{pane_pid}'],
-                        env=real, text=True, capture_output=True).stdout.split('\n')
-    cl = subprocess.run(['tmux', 'list-clients', '-F', '#{client_tty} #{client_pid} #{session_name}'],
-                        env=real, text=True, capture_output=True).stdout.split('\n')
+
+    def tmux_q(*args):
+        r = subprocess.run(['tmux', *args], env=real, text=True, capture_output=True)
+        if r.returncode == 0:
+            return sorted(x for x in r.stdout.split('\n') if x)
+        return [] if 'no server running' in r.stderr else None
+
     try:
-        hp = json.loads(subprocess.run([HERDR, 'pane', 'list'], env=real, text=True, capture_output=True).stdout)
-        herdr_panes = sorted((p['pane_id'], p['terminal_id']) for p in hp['result']['panes'])
-    except (ValueError, KeyError, TypeError):
-        herdr_panes = None   # no live Herdr server reachable from this shell
+        r = subprocess.run([HERDR, 'pane', 'list'], env=real, text=True, capture_output=True)
+        hp = json.loads(r.stdout)
+        if 'error' in hp:
+            herdr_panes = [] if 'not running' in json.dumps(hp['error']).replace('_', ' ') else None
+        else:
+            herdr_panes = sorted((p['pane_id'], p['terminal_id']) for p in hp['result']['panes'])
+    except (ValueError, KeyError, TypeError, OSError):
+        herdr_panes = None
     return {
-        'tmux_panes': sorted(x for x in tm if x),
-        'tmux_clients': sorted(x for x in cl if x),
+        'tmux_panes': tmux_q('list-panes', '-a', '-F', '#{session_name}:#{window_index}.#{pane_index} #{pane_pid}'),
+        'tmux_clients': tmux_q('list-clients', '-F', '#{client_tty} #{client_pid} #{session_name}'),
         'herdr_panes': herdr_panes,
     }
 
@@ -326,7 +335,7 @@ def setup():
     ta('-f', str(REAL_TMUX_CONF), 'new-session', '-d', '-s', 'audit', '-x', str(COLS), '-y', str(ROWS))
     th('new-session', '-d', '-s', 'h', '-x', str(COLS), '-y', str(ROWS),
        'sleep 0.5; exec env -u TMUX -u TMUX_PANE TERM=xterm-256color tmux -L audit attach -t audit')
-    th('pipe-pane', '-O', '-t', 'h:0.0', f'cat >> {RAW}')
+    th('pipe-pane', '-O', '-t', 'h:0.0', f"cat >> '{RAW}'")
     wait_for(lambda: ta('list-clients', '-F', '#{client_tty}').stdout.strip(), 'synthetic client attach')
     wait_for(lambda: PROMPT in ta('capture-pane', '-p', '-t', 'audit:0.0').stdout, 'zsh prompt in outer tmux', 20)
     typ('herdr')
@@ -376,6 +385,7 @@ def teardown():
 def main(argv):
     cmd, *rest = argv or ['help']
     if cmd == 'setup':
+        prepare_root()
         pre, post = setup()
         print(post)
     elif cmd == 'teardown':

@@ -18,6 +18,7 @@ id_*
 *.ppk
 .aws/
 .docker/
+.railway/
 .claude.json
 auth.json
 # Herdr runtime state: only config.toml is tracked
@@ -27,7 +28,10 @@ config/herdr/*
 session.json
 session-snapshots/
 __pycache__/
-# Audit reports stay local: they quote secret patterns and internal hook details
+# Audit reports and run artifacts stay local: reports quote secret patterns and internal hook details
 tools/herdr-tmux-audit/codex-audit-*.md
+tools/herdr-tmux-audit/run/
+tools/herdr-tmux-audit/.herdr-audit-root
+*.bin
 # Written per machine by `herdr integration install claude`; save.sh also strips its settings entry
 claude/hooks/herdr-agent-state.sh

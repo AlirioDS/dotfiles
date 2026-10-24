@@ -25,16 +25,26 @@ done < "$DOTFILES/manifest.txt"
 # Herdr registers its Claude hook with a machine-specific absolute path, and
 # `herdr integration install claude` re-adds it on every machine (it does not
 # recognise a rewritten entry), so keep that one entry out of the shared
-# settings. Your own hooks stay.
-if command -v python3 >/dev/null 2>&1; then
-  python3 - "$DOTFILES/claude/settings.json" <<'PY'
-import json, sys
+# settings. Your own hooks stay. Only the exact managed command is removed:
+#   bash '<abs path>/.claude/hooks/herdr-agent-state.sh' session
+settings="$DOTFILES/claude/settings.json"
+if [ -L "$settings" ]; then
+  # cp -a kept a symlink; filtering through it would edit the live file. Snapshot the target instead.
+  cp -L --remove-destination "$settings" "$settings.tmp" && mv "$settings.tmp" "$settings"
+fi
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "error: python3 is required to strip the machine-specific Herdr hook from claude/settings.json" >&2
+  exit 1
+fi
+python3 - "$settings" <<'PY'
+import json, re, sys
 path = sys.argv[1]
+managed = re.compile(r"^bash '[^']*/\.claude/hooks/herdr-agent-state\.sh' session$")
 d = json.load(open(path))
 changed = False
 for groups in (d.get("hooks") or {}).values():
     for g in groups:
-        kept = [h for h in g.get("hooks", []) if "herdr-agent-state" not in h.get("command", "")]
+        kept = [h for h in g.get("hooks", []) if not managed.match(h.get("command", ""))]
         if len(kept) != len(g.get("hooks", [])):
             g["hooks"] = kept
             changed = True
@@ -45,9 +55,6 @@ if changed:
         f.write("\n")
     print("strip  Herdr hook entry from claude/settings.json (herdr integration install re-adds it per machine)")
 PY
-else
-  echo "note: python3 not found; claude/settings.json keeps the machine-specific Herdr hook entry"
-fi
 
 echo
 echo "Review, then commit:"
