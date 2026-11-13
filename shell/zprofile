@@ -1,0 +1,13 @@
+# ~/.zprofile: read by zsh login shells, before ~/.zshrc.
+#
+# ~/.zshrc sets the tool paths for interactive shells only. A non-interactive login shell
+# (`zsh -lc '...'`) does not read it, and that is the shell herdr-core starts from when the
+# Herdr desktop app reaches this machine over SSH: without these paths it does not find the
+# agents (`claude` in ~/.local/bin, `codex` behind the asdf shims, `opencode`).
+# Keep these entries in step with the PATH lines of ~/.zshrc.
+export ASDF_DATA_DIR="$HOME/.asdf"
+typeset -U path
+path=("$HOME/.local/bin" "$ASDF_DATA_DIR/bin" "$ASDF_DATA_DIR/shims" $path)
+# Present only on some machines: asdf built with `go install`, and OpenCode's own installer.
+if [[ -d "$HOME/go/bin" ]]; then path+=("$HOME/go/bin"); fi
+if [[ -d "$HOME/.opencode/bin" ]]; then path=("$HOME/.opencode/bin" $path); fi

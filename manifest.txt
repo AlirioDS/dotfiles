@@ -2,6 +2,7 @@
 # Format:  <repo-relative-path>  <home-relative-path>
 # Lines starting with # and blank lines are ignored.
 shell/zshrc                  .zshrc
+shell/zprofile               .zprofile
 shell/bashrc                 .bashrc
 shell/profile                .profile
 shell/tmux.conf              .tmux.conf

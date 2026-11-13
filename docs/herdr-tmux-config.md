@@ -193,7 +193,7 @@ This is the active block of `~/.zshrc`. The rest of the file holds the user's us
 
 ```zsh
 # --- Auto-start tmux: one numbered session per terminal tab (no awk) ---
-if [[ $- == *i* ]] && [[ -t 0 && -t 1 ]] && [[ -z "$TMUX" ]] && [[ -z "$NO_TMUX" ]] && [[ "${HERDR_ENV:-}" != 1 ]] && command -v tmux >/dev/null 2>&1; then
+if [[ $- == *i* ]] && [[ -t 0 && -t 1 ]] && [[ -z "$TMUX" ]] && [[ -z "$NO_TMUX" ]] && [[ "${HERDR_ENV:-}" != 1 ]] && [[ -z "${HC_TERMINAL_ID:-}" ]] && command -v tmux >/dev/null 2>&1; then
   # Existing numeric session names (may be empty)
   sessions="$(tmux ls -F '#{session_name}' 2>/dev/null | grep -E '^[0-9]+$' | sort -n || true)"
 
@@ -223,6 +223,16 @@ The new condition is:
 ```
 
 Herdr sets `HERDR_ENV=1` in the processes of its panes. The condition keeps tmux's auto-start outside Herdr and prevents it inside. It was checked both ways: without `HERDR_ENV`, the same `.zshrc` creates tmux session `0`; with `HERDR_ENV=1`, it creates none.
+
+A second condition was added on 13 November 2026 for the Herdr desktop app:
+
+```zsh
+[[ -z "${HC_TERMINAL_ID:-}" ]]
+```
+
+The desktop app does not use the `herdr` binary: its terminals run on herdr-core (`hc`), which sets `HC_TERMINAL_ID` in them and not `HERDR_ENV`. The app starts shells and agents inside the user's interactive shell, so with the `HERDR_ENV` check alone a desktop space opened tmux and its agent never started. It was checked with this `.zshrc` on private tmux sockets: with `HC_TERMINAL_ID` set it creates no session; without it, session `0` as before.
+
+herdr-core itself starts from a non-interactive login shell when the desktop app reaches this machine over SSH, and that shell does not read `.zshrc`. `~/.zprofile` gives login shells the same tool paths (`~/.local/bin`, asdf and its shims, plus `~/go/bin` and `~/.opencode/bin` where they exist), so that herdr-core finds `claude`, `codex` and `opencode`.
 
 The `until tmux new -d -s "$i"` loop was added on 24 October: when several shells start at once (Windows Terminal restoring tabs, several SSH connections), two of them computed the same free number and the second failed with "duplicate session" and stayed outside tmux. Now the session is created detached first — if that fails and the session exists, another shell took the number and the loop tries the next one; any other error is shown and ends the loop — and then `tmux attach` runs exactly once, so nothing that happens to that client later (detach, server killed, client killed) can re-enter the loop. It was verified with three simultaneous shells: sessions `0`, `1` and `2`, all three inside tmux, and exiting or detaching returns to the shell.
 
