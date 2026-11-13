@@ -118,7 +118,7 @@ bump they'll look "missing" until you reinstall them under the new version.
 
 | Path | Contents | Copied to/from |
 |---|---|---|
-| `shell/` | `zshrc`, `bashrc`, `profile`, `tmux.conf`, `zsh/` (completions) | `~/.zshrc`, `~/.bashrc`, `~/.profile`, `~/.tmux.conf`, `~/.zsh` |
+| `shell/` | `zshrc`, `zprofile`, `bashrc`, `profile`, `tmux.conf`, `zsh/` (completions) | `~/.zshrc`, `~/.zprofile`, `~/.bashrc`, `~/.profile`, `~/.tmux.conf`, `~/.zsh` |
 | `git/` | `gitconfig` | `~/.gitconfig` |
 | `tools/` | `tool-versions` (asdf version pins) | `~/.tool-versions` |
 | `config/` | selected `~/.config`: `gh/config.yml`, `git/ignore`, `herdr/config.toml` | `~/.config/gh/config.yml`, `~/.config/git/ignore`, `~/.config/herdr/config.toml` |

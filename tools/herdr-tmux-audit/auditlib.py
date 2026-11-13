@@ -57,7 +57,7 @@ ZSH = shutil.which('zsh') or '/usr/bin/zsh'
 MARKER = SP / '.herdr-audit-root'   # proves this directory was created by the harness
 COLS, ROWS = 140, 45
 
-STRIP_PREFIXES = ('HERDR_', 'TMUX', 'CLAUDE', 'TERM_PROGRAM')
+STRIP_PREFIXES = ('HERDR_', 'HC_', 'TMUX', 'CLAUDE', 'TERM_PROGRAM')
 STRIP_EXACT = {'NO_TMUX', 'COLORTERM'}
 
 

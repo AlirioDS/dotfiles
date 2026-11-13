@@ -147,7 +147,7 @@ export PATH="$ASDF_DATA_DIR/bin:$ASDF_DATA_DIR/shims:$PATH"
 export PATH="$PATH:${GOBIN:-$(go env GOPATH 2>/dev/null)/bin}"
 
 # --- Auto-start tmux: one numbered session per terminal tab (no awk) ---
-if [[ $- == *i* ]] && [[ -t 0 && -t 1 ]] && [[ -z "$TMUX" ]] && [[ -z "$NO_TMUX" ]] && [[ "${HERDR_ENV:-}" != 1 ]] && command -v tmux >/dev/null 2>&1; then
+if [[ $- == *i* ]] && [[ -t 0 && -t 1 ]] && [[ -z "$TMUX" ]] && [[ -z "$NO_TMUX" ]] && [[ "${HERDR_ENV:-}" != 1 ]] && [[ -z "${HC_TERMINAL_ID:-}" ]] && command -v tmux >/dev/null 2>&1; then
   # Existing numeric session names (may be empty)
   sessions="$(tmux ls -F '#{session_name}' 2>/dev/null | grep -E '^[0-9]+$' | sort -n || true)"
 
