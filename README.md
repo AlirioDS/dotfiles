@@ -79,7 +79,7 @@ that machine.
   `cp git/gitconfig.local.example ~/.gitconfig.local` and edit.
 - **SSH key** — copy your `~/.ssh/id_github` (and any others) onto the machine.
   It's deliberately excluded from this repo. Git over HTTPS still works via `gh`,
-  but SSH remotes (`git@github.com:…`) and the `ssh-add` line in `.zshrc` need it.
+  but SSH remotes (`git@github.com:…`) and the ssh-agent block in `.zshrc` need it.
 - **Auth/credentials** — `gh auth login`, plus `~/.aws`, `~/.docker`, etc. as
   needed. None of these live in the repo.
 - **Agent logins and Claude plugins** — `claude` and `codex` prompt for login on
