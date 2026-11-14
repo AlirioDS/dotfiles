@@ -131,9 +131,33 @@ fi
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-# ssh-agent
-[ -z "$SSH_AUTH_SOCK" ] && eval "$(ssh-agent -s)" >/dev/null
-ssh-add -l >/dev/null 2>&1 || ssh-add ~/.ssh/id_github >/dev/null 2>&1
+# ssh-agent: one agent per user, shared by every shell, and only on machines that have the
+# GitHub key. Each shell used to start its own agent and never stop it, which left one idle
+# agent per terminal; and a shell that inherited an agent without keys (the gpg-agent socket
+# of a systemd user session, for instance) could not reach GitHub. NO_SSH_AGENT (any
+# non-empty value) skips this block.
+if [[ -f ~/.ssh/id_github && -z "${NO_SSH_AGENT:-}" ]]; then
+  ssh-add -l >/dev/null 2>&1
+  if (( $? != 0 )); then
+    # No agent answers, or it holds no keys. (An agent that already has keys, such as a
+    # forwarded one, is left alone.) Use the shared agent, always on the same socket.
+    export SSH_AUTH_SOCK="$HOME/.ssh/ssh-agent.socket"
+    ssh-add -l >/dev/null 2>&1
+    if (( $? == 2 )); then
+      # Nothing listens on the socket yet: start the agent. The lock keeps shells that start
+      # at the same moment from each starting one; 9>&- keeps the agent from holding the lock.
+      (
+        command -v flock >/dev/null 2>&1 && flock 9
+        ssh-add -l >/dev/null 2>&1
+        if (( $? == 2 )); then
+          rm -f "$SSH_AUTH_SOCK"
+          ssh-agent -a "$SSH_AUTH_SOCK" >/dev/null 9>&-
+        fi
+      ) 9>"$SSH_AUTH_SOCK.lock"
+    fi
+    ssh-add -l >/dev/null 2>&1 || ssh-add ~/.ssh/id_github >/dev/null 2>&1
+  fi
+fi
 # /ssh-agent
 
 # === GO ===

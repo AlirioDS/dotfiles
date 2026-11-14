@@ -82,6 +82,7 @@ def make_env():
         SHELL=ZSH,
         HISTFILE=str(SP / 'zsh_history.test'),
         SSH_AUTH_SOCK=os.path.realpath(os.environ.get('SSH_AUTH_SOCK', '/nonexistent')),
+        NO_SSH_AGENT='1',   # a test shell must never start or adopt the real shared agent
         AUDIT_RUN_ID=run_id(),
     )
     return env
